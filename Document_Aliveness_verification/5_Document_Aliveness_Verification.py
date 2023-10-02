@@ -28,7 +28,7 @@ st.write("here Verification between previoulsy given image and live stream from 
 st.write("____")
 
 page_name = 'Document Aliveness Verification'
-
+count = 0
 #load detection model
 def video_frame_callback(frame: av.VideoFrame) -> av.VideoFrame:
     img = frame.to_ndarray(format="bgr24") #480*640
@@ -54,6 +54,8 @@ def video_frame_callback(frame: av.VideoFrame) -> av.VideoFrame:
     #     pass
     # perform edge detection
     # img = cv2.cvtColor(cv2.Canny(img, 100, 200), cv2.COLOR_GRAY2BGR)
+    cv2.imwrite("Input/"+str(time.time())+".jpg",img)
+    
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 RECORD_DIR = Path("./Input/")
@@ -63,6 +65,7 @@ def stream_and_record():
         st.session_state["prefix"] = str(uuid.uuid4())
     prefix = st.session_state["prefix"]
     in_file = RECORD_DIR / f"{prefix}_input.mp4"
+    os.makedirs("Input/{}/".format(prefix),exist_ok=True)
     # out_file = RECORD_DIR / f"{prefix}_output.flv"
 
     def in_recorder_factory() -> MediaRecorder:

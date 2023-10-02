@@ -191,6 +191,8 @@ def prepare_request_data(request_body: dict) -> dict:
 def prepare_actions(actions):
     actions_res = ActionList()
     for action in actions:
+        print(action)
+
         actions_res.append(ACTIONS_LIST[action])
     return actions_res
 

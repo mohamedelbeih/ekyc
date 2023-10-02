@@ -36,9 +36,11 @@ def get_actions(path):
     actions = ActionList()
 
     with open(path, "r") as f:
-        actions_str = f.read().strip().split(', ')
+        actions_str = f.read().strip().split(',')
+    #print(actions_str)
 
     for action in actions_str:
+        print(action)
         if action == "Center":
             actions.append(Action_LOOKINGCENTER)
         elif action == "Right":
@@ -56,6 +58,13 @@ def get_actions(path):
 
     return actions
 
+def prepare_times(times):
+    if not times:
+        times = []
+    times_res = TimeSlotList()
+    for time_item in times:
+        times_res.append(time_item)
+    return times_res
 
 def run(case):
     video_name = os.path.splitext(case)[0]
@@ -65,18 +74,19 @@ def run(case):
     actions = get_actions(action_path)
     #output1 = liveness_check_from_path(video_path, model_path, actions, TimeSlotList())
     #dump_output(output1.result, video_name)
+    times = prepare_times(False)
 
     # read video as python bytes
     buffer = []
     with open(video_path, "rb") as file:
         while True:
-            byte = file.read(1)
+            byte = file.read(2)
             if not byte:
                 break
             buffer.append(byte)
 
     buff = b''.join(buffer)
-    output2 = liveness_check(buff, len(buff), model_path, actions, TimeSlotList())
+    output2 = liveness_check(buff, len(buff), model_path, actions, times)
     dump_output(output2.result, video_name + "-buff")
 
  
