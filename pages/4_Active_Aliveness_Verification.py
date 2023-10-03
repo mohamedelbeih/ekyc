@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_extras import switch_page_button
 import os
 from streamlit_webrtc import webrtc_streamer
-import av
+import av , sys
 import cv2 , os , math
 import time
 import uuid,json , threading
@@ -69,41 +69,47 @@ def video_frame_callback(frame: av.VideoFrame) -> av.VideoFrame:
         os.makedirs("Active_aliveness_verification/start_time/"+start_time)
     else:
         start_time = os.listdir("Active_aliveness_verification/start_time")[0]
-    
     current_action_idx = math.floor(( time.time() - float(start_time) ) / 10 )
+    print("<<<<<",current_action_idx)
+
 
     current_action = actions[current_action_idx]
+    print(">>>>",current_action)
+
+
     os.makedirs("Active_aliveness_verification/actions/" + current_action,exist_ok=True)
 
-    # if ( int(time.time()) - int(st.session_state["stream_starting_time"]) ) % 3 == 0:
     images_num = len(os.listdir("Active_aliveness_verification/actions/"+ current_action))
-    if images_num == 20 :
+    print("-----------------------------")
+    if  images_num == 30 :
         #making video and path it to get results
-        print("cheeeeeeeeeeeeeeeeeeeeeecking")
+        print("cheeeeeeeeeeeeeeeeeeeeeecking",current_action)
         with lock:
             check_aliveness(current_action)
         if False:
             t2 = threading.Thread(check_aliveness,args=(current_action))
-            t2.start()
-          
+            t2.start()         
 
-    elif images_num < 21:     
-        cv2.imwrite("Active_aliveness_verification/actions/"+ current_action + "/" + str(time.time()) + ".jpg" , img)
-    else:
-        try:
-            print("trying")
-            with open("Active_aliveness_verification/actions/"+ current_action + "/results.json") as f:
-                print("OOOOOO")
-                res = json.load(f)
+    if images_num <= 30:     
+        cv2.imwrite("Active_aliveness_verification/actions/"+ current_action + "/" + str(time.time()) + ".jpg" , img)   
+        print("saving",current_action) 
 
-            # while True:
-            if not res["is_live"] :
-                print("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
-                # make new folder with results lw fe file 2bl time.time() b 2 secs msln
-                return 
+    try:
+        print("trying")
+        with open("Active_aliveness_verification/actions/"+ current_action + "/results.json") as f:
+            # print("OOOOOO")
+            res = json.load(f)
+
+        # while True:
+        if not res["is_live"] :
+            # print("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
+            # make new folder with results lw fe file 2bl time.time() b 2 secs msln
+            # print(actions[15]) # to break the call back
+
+            return av.VideoFrame.from_ndarray(img.fill(0), format="bgr24")
             
-        except Exception as e:
-            pass
+    except:
+        pass
 
 
     return av.VideoFrame.from_ndarray(img, format="bgr24")
@@ -147,7 +153,7 @@ if page_name in st.session_state['selected_verifications']:
     os.system("rm -r Active_aliveness_verification/start_time/*")
 
     for a in actions:
-        os.makedirs("Active_aliveness_verification/actions/" + a)
+        os.makedirs("Active_aliveness_verification/actions/" + a,exist_ok=True)
     
     # record video and convert it to mp4 in Active_aliveness_verification/uploads/video.mp4
     
