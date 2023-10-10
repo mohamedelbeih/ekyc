@@ -1,10 +1,21 @@
 import streamlit as st
 from streamlit_extras import switch_page_button
 import time
+import os
 st.set_page_config(
     page_title="Verification",initial_sidebar_state="collapsed"
     # page_icon="👋",
 )
+with st.sidebar:
+    if st.button("Reset",key='reset'):
+        os.system("rm -r image.json")
+        os.system("rm -r verify/Input/*")
+        os.system("rm -r verify/selected/*")
+        os.system("rm -r detect_class_process/results.json")
+        os.system("rm -r Active_aliveness_verification/verified/*")
+        os.system("rm -r Active_aliveness_verification/Verified_Actions/*")
+        os.system("rm -r Active_aliveness_verification/input/*")
+
 verf_pages = ['Face Verification','Active Aliveness Verification','Document Aliveness Verification','Audio Verification']
 # st.sidebar.success("Select a demo above.")
 st.subheader("Selecting Verification Methods")
@@ -14,9 +25,9 @@ if st.session_state['image'] != None and st.session_state['detect_class_process_
     face_verify = st.checkbox('Face Verification')
     st.info("verification between the previously processed image and captured image from camera")
     st.warning('to use any type of aliveness verification you must do face verification firstly')
-    active_verify = st.checkbox('Active Aliveness Verification') if face_verify else st.checkbox('Active Aliveness Verification',value=False,disabled=True)
+    active_verify = st.checkbox('Active Aliveness Verification') #if face_verify else st.checkbox('Active Aliveness Verification',value=False,disabled=True)
     st.info("verification between the previously processed image and live stream of person in the processed document")
-    document_verify = st.checkbox('Document Aliveness Verification') if face_verify else st.checkbox('Document Aliveness Verification',value=False,disabled=True)
+    document_verify = st.checkbox('Document Aliveness Verification') #if face_verify else st.checkbox('Document Aliveness Verification',value=False,disabled=True)
     st.info("verification between the previously processed image and live stream of card")
     audio_verify = st.checkbox('Audio Verification')
     st.info("verification through audio sample")
