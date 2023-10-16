@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_extras import switch_page_button
-
+import os , uuid
 st.set_page_config(
     page_title="Home",initial_sidebar_state="collapsed"
     # page_icon="👋",
@@ -19,6 +19,18 @@ st.markdown(
     ### below .. you will need to check the wanted documents:
 """
 )
+with st.sidebar:
+    if st.button("Reset",key='reset'):
+        os.system("rm -r image.json")
+        os.system("rm -r verify/Input/*")
+        os.system("rm -r verify/selected/*")
+        os.system("rm -r detect_class_process/results.json")
+        os.system("rm -r Active_aliveness_verification/verified/*")
+        os.system("rm -r Active_aliveness_verification/Verified_Actions/*")
+        os.system("rm -r Active_aliveness_verification/input/*")
+
+st.session_state['user_id'] = str(uuid.uuid4())
+
 check_all = st.checkbox("Select all")
 st.write("")
 document0 = st.checkbox('SaudiArabia_dl',value=check_all)

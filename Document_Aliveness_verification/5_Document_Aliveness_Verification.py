@@ -14,9 +14,9 @@ import cv2
 import streamlit as st
 from aiortc.contrib.media import MediaRecorder
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
-
+from check_liveness import check_tilting
 from sample_utils.turn import get_ice_servers
-
+from inference import *
 st.set_page_config(
     page_title="Document Aliveness Verification",initial_sidebar_state="collapsed"
     # page_icon="👋",
@@ -30,69 +30,44 @@ st.write("____")
 page_name = 'Document Aliveness Verification'
 count = 0
 #load detection model
+model = initialze_scripted_model('/media/asr7/19a7589f-b05f-4923-9b94-5803bff11012/OCR/e-kyc-pipeline/Document_Aliveness_verification/v.10/model.ts')
 def video_frame_callback(frame: av.VideoFrame) -> av.VideoFrame:
     img = frame.to_ndarray(format="bgr24") #480*640
     # img = cv2.cvtColor(cv2.Canny(img, 100, 200), cv2.COLOR_GRAY2BGR)
+    img = cv2.rectangle(img,(50,115),(590,460),(255,0,0))
 
-    # corner_pts = None
-    # corner_pts = detect_document(img, model)
-    # if corner_pts != None:# replaceing with if card is detected
-    #     h_left = corner_pts[3][1] -corner_pts[0][1] 
-    #     h_right = corner_pts[2][1] -corner_pts[1][1] 
-    #     w_up = corner_pts[1][0] -corner_pts[0][0] 
-    #     w_bottom = corner_pts[3][0] -corner_pts[2][0] 
-    #     img = cv2.polylines(img, [corner_pts.astype('int')],True, (0, 0, 255), 2) 
-    #     if abs(h_left - h_right) < 30 and abs(w_up-w_bottom) < 30 :
-    #         img = cv2.polylines(img, [corner_pts.astype('int')],True, (0, 255, 0), 2)
-    #         global height
-    #         height = img.shape[0] #card height
-    #         global width
-    #         width = img.shape[1] # card width
-    #         img = cv2.putText(img, 'Centered', (300,444), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
-    # else:
-    #     # img = cv2.polylines(img, [corner_pts.astype('int')],True, (0, 0 , 255), 2)
-    #     pass
-    # perform edge detection
-    # img = cv2.cvtColor(cv2.Canny(img, 100, 200), cv2.COLOR_GRAY2BGR)
-    cv2.imwrite("Input/"+str(time.time())+".jpg",img)
-    
+    corner_pts = None
+    card , corner_pts = detect_document(img, model)
+    verf_Actions = os.listdir("Verified_Actions")
+    need_actions = list(set(actions).difference(set(verf_Actions)))
+    t =  "please verify : " + need_actions[0] if len(need_actions) > 0 else "Done verifying all of the selected actions"
+    img = cv2.putText(img,t , (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255,0,0), 2, cv2.LINE_AA)
+    #verified
+    t =  "actions verified till now : " + ",".join(verf_Actions)
+    img = cv2.putText(img,t , (10,70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1, cv2.LINE_AA)
+    #needed_to verify
+    t =  "actions still unverified : " + ",".join(need_actions)
+    img = cv2.putText(img,t , (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1, cv2.LINE_AA)
+    if card:# replaceing with if card is detected
+        h_left = corner_pts[3][1] -corner_pts[0][1] 
+        h_right = corner_pts[2][1] -corner_pts[1][1] 
+        w_up = corner_pts[1][0] -corner_pts[0][0] 
+        w_bottom = corner_pts[2][0] -corner_pts[3][0] 
+        tilting = check_tilting(30,None, None,h_left,h_right,w_bottom,w_up)
+        print(">>>>>>>>>>>>>",tilting,h_left,h_right,w_up,w_bottom)
+        if tilting and (tilting in actions):
+            os.makedirs('Verified_Actions/'+tilting,exist_ok=True)
+
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-RECORD_DIR = Path("./Input/")
-
-def stream_and_record():
-    if "prefix" not in st.session_state:
-        st.session_state["prefix"] = str(uuid.uuid4())
-    prefix = st.session_state["prefix"]
-    in_file = RECORD_DIR / f"{prefix}_input.mp4"
-    os.makedirs("Input/{}/".format(prefix),exist_ok=True)
-    # out_file = RECORD_DIR / f"{prefix}_output.flv"
-
-    def in_recorder_factory() -> MediaRecorder:
-        return MediaRecorder(
-            str(in_file), format="mp4"
-        )  # HLS does not work. See https://github.com/aiortc/aiortc/issues/331
-
-    # def out_recorder_factory() -> MediaRecorder:
-    #     return MediaRecorder(str(out_file), format="flv")
-    webrtc_streamer(
-        key="record",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration={"iceServers": get_ice_servers()},
-        media_stream_constraints={
-            "video": True,
-            "audio": False,
-        },
-        video_frame_callback=video_frame_callback,
-        in_recorder_factory=in_recorder_factory,
-        # out_recorder_factory=out_recorder_factory,
-    )
 
 actions = st.multiselect("Pick up the verification actions",
                        ['Up','Down','Left','Right'],
                        ['Down','Left'])
 
-stream_and_record()
+st.info('Please stream with your card almost filling the blue rectangle then start titlting as required')
+webrtc_streamer(key="example", video_frame_callback=video_frame_callback, media_stream_constraints={"video": True,"audio": False,},async_processing=True,rtc_configuration={"iceServers": get_ice_servers()},)
+
 if st.button('verify',key='doc_verf'):
     prefix = st.session_state["prefix"]
     in_file = prefix +"_input.mp4"

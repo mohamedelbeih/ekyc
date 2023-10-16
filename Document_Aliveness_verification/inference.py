@@ -388,13 +388,46 @@ def detect_document(img, model):
         # getting the most likely document frompredicted documents score
         i = np.argmax(scores)
         corner_pts = get_card_boundaries(masks[i], labels[i], 0, None)
-        # img = cv2.polylines(img, [corner_pts.astype('int')],True, (0, 0, 255), 2) 
+        img = cv2.polylines(img, [corner_pts.astype('int')],True, (0, 255, 0), 2) 
         card = True
         return card , corner_pts
         
     else:
         card = False
         return card , None
+import json
+with open("Document_Aliveness_verification/card_classifier/class_map.json") as f:
+    id2type = json.load(f)
+     
+def class_doc(img, model):
+    """
+    document type detection pipeline
+
+    Parameters
+    ==========
+
+    path : str
+           path of input image
+
+    model : pytorch object
+            loaded model that will be used in inferencing
+
+    output_dir: str
+                path to the output directroy that will be created to dump results
+                of the pipeline
+
+
+    """
+    boxes, labels, masks, scores = inference_model(img, model)
+
+    if scores.shape[0] >= 1: # means that there is a document in the image
+        # getting the most likely document frompredicted documents score
+        i = np.argmax(scores)
+        doc_id = labels[i]
+        return id2type[str(doc_id)]
+    else:
+        return False
+            
 
 
 if __name__ == "__main__":
