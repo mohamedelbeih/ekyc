@@ -30,7 +30,7 @@ try:
 except:
     pass
 #verf_pages = ['Face Verification','Active Aliveness Verification','Document Aliveness Verification','Audio Verification']
-
+print("<<<<<<<<<<<<<<<<<<<<<<<<<<<",st.session_state['user_id'])
 if page_name in st.session_state['selected_verifications']:
     st.write("inprogress")
     col1, col2  = st.columns([0.85,0.15],gap="large")

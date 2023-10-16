@@ -245,7 +245,7 @@ def prepare_result(result, return_cropped_images):
         },
         **cropped_images
     }
-def prepare_multi_result(card, image_fields , field_output , return_cropped_images,blur_percentage):
+def prepare_multi_result(card, image_fields , field_output , return_cropped_images,blur_percentage,doc_type):
     cropped_images = {}
     if return_cropped_images:
         cropped_images = {
@@ -261,6 +261,7 @@ def prepare_multi_result(card, image_fields , field_output , return_cropped_imag
         **{
             "blur_percentage": blur_percentage
         },
+        "doc_type":doc_type,
         **cropped_images
     }
 
@@ -366,7 +367,7 @@ def call_get_cards_and_recognize(image, return_cropped_images, document_type, ):
 
             os.system("rm fields_type_2_text.json")
 
-            cards_dicts["card_" + str(i)] = prepare_multi_result(card, image_fields , field_output ,return_cropped_images,blur_result.result)
+            cards_dicts["card_" + str(i)] = prepare_multi_result(card, image_fields , field_output ,return_cropped_images,blur_result.result,document_type)
             
             for eng_f in eng_fields:
                 cards_dicts["card_" + str(i)][eng_f] = eng_fields[eng_f]
@@ -394,7 +395,7 @@ def inference_mrz():
         results = json.load(f)
     return results
 
-def process_docs_in_image(image, return_cropped_images,k2_recognition ):
+def process_docs_in_image(user_id,image, return_cropped_images,k2_recognition):
 
     request_time = time.time()
     request_time = str(request_time)
@@ -409,7 +410,7 @@ def process_docs_in_image(image, return_cropped_images,k2_recognition ):
 
     #localizing and classifying cards
     img = image_output.result
-    output = detect_multi_cards(img, "card_detect_class/layout_enc/" ,settings.LAYOUT_THREADS,False)
+    output = detect_multi_cards(img, "card_detect_class/"+user_id ,settings.LAYOUT_THREADS,False)
     cards = output.result 
     if output.error.code not in [0,3703]:
         print(output.error.code, output.error.what, flush=True)
@@ -449,6 +450,8 @@ def process_docs_in_image(image, return_cropped_images,k2_recognition ):
     eng_fields = {} #getting eng fields ready to trocr
     arabic_fields = {}
     # cards_image_fields ={}
+    os.makedirs("../Document_Aliveness_verification/cards/"+user_id,exist_ok=True)
+
     for i in range(cards.size()):
     
     #     recognition_output = recognize_card(
@@ -465,7 +468,7 @@ def process_docs_in_image(image, return_cropped_images,k2_recognition ):
     #         print(recognition_output.error.code, recognition_output.error.what, flush=True)
     #         error, error_code = ENGINE_CODES.get(f"{recognition_output.error.code}", (InternalServerError, "4500"))
     #         raise error(error_code)
-
+        
         blur_result = get_blur_percentage(cards[i].warped_card, get_model_path(documents_types[i], 'layout'))
         card_output = detect_card(cards[i].warped_card, get_model_path(documents_types[i], 'layout'),settings.LAYOUT_THREADS,"Non",PointVector(), False , True)
         error = card_output.error
@@ -499,8 +502,9 @@ def process_docs_in_image(image, return_cropped_images,k2_recognition ):
                     error, error_code = ENGINE_CODES.get(f"{field_output.error.code}", (InternalServerError, "4500"))
                     raise error(error_code)
 
-                cards_dicts["card_" + str(i+1)] = prepare_multi_result(cards[i], image_fields , field_output ,return_cropped_images,blur_result.result)
-    
+                cards_dicts["card_" + str(i+1)] = prepare_multi_result(cards[i], image_fields , field_output ,return_cropped_images,blur_result.result,documents_types[i])
+        cards[i].warped_card.convert_color(Image.BGR)
+        cards[i].warped_card.save("../Document_Aliveness_verification/cards/"+user_id+"/card_"+str(i+1)+".jpg")
     #getting the correct path of the needed libs in both conda or docker
     lib_path = [ x for x in sys.path if "-packages" in x ]
     lib_path_lens = [ len(x) for x in lib_path ]

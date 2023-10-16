@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_extras import switch_page_button
-import os
+import os , uuid
 st.set_page_config(
     page_title="Home",initial_sidebar_state="collapsed"
     # page_icon="👋",
@@ -29,7 +29,7 @@ with st.sidebar:
         os.system("rm -r Active_aliveness_verification/Verified_Actions/*")
         os.system("rm -r Active_aliveness_verification/input/*")
 
-
+st.session_state['user_id'] = str(uuid.uuid4())
 
 check_all = st.checkbox("Select all")
 st.write("")
