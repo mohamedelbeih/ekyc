@@ -389,9 +389,10 @@ def k2_recognize(recog_fields):
         
     return
 
-def inference_mrz():
-    os.system("cd mrz-server; export LD_LIBRARY_PATH=$(pwd); python e-kyc.py ../../image.json")
-    with open('mrz-server/results.json') as f:
+def inference_mrz(user_id):
+    cards_dir = "../../Data/cards/"+user_id
+    os.system("cd mrz-server; export LD_LIBRARY_PATH=$(pwd); python e-kyc.py "+cards_dir)
+    with open("../Data/Processing_results/"+user_id+".json") as f:
         results = json.load(f)
     return results
 
@@ -410,7 +411,7 @@ def process_docs_in_image(user_id,image, return_cropped_images,k2_recognition):
 
     #localizing and classifying cards
     img = image_output.result
-    output = detect_multi_cards(img, "card_detect_class/"+user_id ,settings.LAYOUT_THREADS,False)
+    output = detect_multi_cards(img, "../Data/Models/"+user_id ,settings.LAYOUT_THREADS,False)
     cards = output.result 
     if output.error.code not in [0,3703]:
         print(output.error.code, output.error.what, flush=True)
@@ -428,13 +429,19 @@ def process_docs_in_image(user_id,image, return_cropped_images,k2_recognition):
     if cards.size() == 0:
         return {"Cards":"There is no supported docs in the image"}
     
+    os.makedirs("../Data/cards/"+user_id,exist_ok=True)
+    
     Mrz = False
+    i=0
     for card in cards:
         if card.type == 'Mrz':
             Mrz = True
+            cards[i].warped_card.convert_color(Image.BGR)
+            cards[i].warped_card.save("../Data/cards/"+user_id+"/card_"+str(i+1)+".jpg")
+            i+=1
 
     if Mrz:
-        mrz_results = inference_mrz()
+        mrz_results = inference_mrz(user_id)
         return mrz_results
 
     #json file containing all english fields that will be passed to tr_ocr 
@@ -450,7 +457,6 @@ def process_docs_in_image(user_id,image, return_cropped_images,k2_recognition):
     eng_fields = {} #getting eng fields ready to trocr
     arabic_fields = {}
     # cards_image_fields ={}
-    os.makedirs("../Document_Aliveness_verification/cards/"+user_id,exist_ok=True)
 
     for i in range(cards.size()):
     
@@ -504,7 +510,7 @@ def process_docs_in_image(user_id,image, return_cropped_images,k2_recognition):
 
                 cards_dicts["card_" + str(i+1)] = prepare_multi_result(cards[i], image_fields , field_output ,return_cropped_images,blur_result.result,documents_types[i])
         cards[i].warped_card.convert_color(Image.BGR)
-        cards[i].warped_card.save("../Document_Aliveness_verification/cards/"+user_id+"/card_"+str(i+1)+".jpg")
+        cards[i].warped_card.save("../Data/cards/"+user_id+"/card_"+str(i+1)+".jpg")
     #getting the correct path of the needed libs in both conda or docker
     lib_path = [ x for x in sys.path if "-packages" in x ]
     lib_path_lens = [ len(x) for x in lib_path ]

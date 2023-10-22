@@ -36,13 +36,8 @@ st.set_page_config(
 )
 with st.sidebar:
     if st.button("Reset",key='reset'):
-        os.system("rm -r image.json")
-        os.system("rm -r verify/Input/*")
-        os.system("rm -r verify/selected/*")
-        os.system("rm -r detect_class_process/results.json")
-        os.system("rm -r Active_aliveness_verification/verified/*")
-        os.system("rm -r Active_aliveness_verification/Verified_Actions/*")
-        os.system("rm -r Active_aliveness_verification/input/*")
+        os.system("rm -r Data/Active_aliveness_selected_face/"+st.session_state['user_id']+"/*")       
+        os.system("rm -r Data/Active_Aliveness_Verified_Actions/"+st.session_state['user_id']+"/*")
 
 
 # st.sidebar.success("Select a demo above.")
@@ -88,7 +83,8 @@ def callback(frame):
     if detection_result.face_landmarks == []:
         return av.VideoFrame.from_ndarray(img, format="bgr24")
     else:
-        verf_Actions = os.listdir("Active_aliveness_verification/Verified_Actions/"+user_id)
+        verf_Actions = os.listdir("Data/Active_Aliveness_Verified_Actions/"+user_id)
+        verf_Actions = [ x.replace(".jpg","") for x in verf_Actions]
         need_actions = list(set(selected_actions).difference(set(verf_Actions)))
         rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         annotated_image = draw_landmarks_on_image(image.numpy_view(), detection_result)
@@ -108,7 +104,10 @@ def callback(frame):
                 img_encode = face_recognition.face_encodings(rgb_img)[0]
                 values = face_recognition.compare_faces([encode],img_encode)
                 if sum(values) > 0:
-                    os.makedirs("Active_aliveness_verification/Verified_Actions/"+user_id+"/"+need_actions[0],exist_ok=True)
+                    # os.makedirs("Data/Active_Aliveness_Verified_Actions/"+user_id+"/"+need_actions[0],exist_ok=True)
+                    cv2.imwrite("Data/Active_Aliveness_Verified_Actions/"+user_id+"/"+need_actions[0]+".jpg",img)
+                elif verify_any_person:
+                    cv2.imwrite("Data/Active_Aliveness_Verified_Actions/"+user_id+"/"+need_actions[0]+".jpg",img)
                 else:
                     img = cv2.rectangle(img, (100,350), (540,450), (0,0,255), -1) 
                     img = cv2.putText(img, "Selected person is not streaming", (120,410), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0,0,0), 2, cv2.LINE_AA)
@@ -158,27 +157,27 @@ def draw_landmarks_on_image(rgb_image, detection_result):
 
 if "selected_verifications" in st.session_state:
     if page_name in st.session_state['selected_verifications']:
-        os.makedirs("Active_aliveness_verification/input/"+st.session_state['user_id'],exist_ok=True)
-        os.makedirs("Active_aliveness_verification/verified/"+st.session_state['user_id'],exist_ok=True)
-        os.makedirs("Active_aliveness_verification/Verified_Actions/"+st.session_state['user_id'],exist_ok=True)
+        os.makedirs("Data/Active_aliveness_selected_face/"+st.session_state['user_id'],exist_ok=True)
+        os.makedirs("Data/Active_Aliveness_Verified_Actions/"+st.session_state['user_id'],exist_ok=True)
 
         not_matched = True
-        faces = os.listdir("verify/Input/"+st.session_state['user_id'])
+        verify_any_person = False
+        faces = os.listdir("Data/faces/"+st.session_state['user_id'])
         selected_faces = 0
         for face in faces:
-            img= Image.open("verify/Input/"+st.session_state['user_id']+"/"+face)
+            img= Image.open("Data/faces/"+st.session_state['user_id']+"/"+face)
             with st.container():
                 col1, col2  = st.columns([0.5,0.5],gap="large")
                 with col1:
                     st.image(img)
                 with col2:
                     if st.checkbox("Personal_image_"+face.split("_")[-1],value=False):
-                        os.system("cp verify/Input/"+st.session_state['user_id']+"/"+face + " Active_aliveness_verification/input/"
+                        os.system("cp Data/faces/"+st.session_state['user_id']+"/"+face + " Data/Active_aliveness_selected_face/"
                                   +st.session_state['user_id']+"/"+face)
                         selected_faces +=1
                         idx = faces.index(face)
                     else:
-                        os.system("rm Active_aliveness_verification/input/"+st.session_state['user_id']+"/"+face)
+                        os.system("rm Data/Active_aliveness_selected_face/"+st.session_state['user_id']+"/"+face)
 
         base_options = python.BaseOptions(model_asset_path='Active_aliveness_verification/face_landmarker_v2_with_blendshapes.task')
         options = vision.FaceLandmarkerOptions(base_options=base_options,
@@ -188,14 +187,11 @@ if "selected_verifications" in st.session_state:
         
         detector = vision.FaceLandmarker.create_from_options(options)
         if selected_faces == 1 :
-            img= face_recognition.load_image_file("verify/Input/"+st.session_state['user_id']+"/"+faces[idx])
+            img= face_recognition.load_image_file("Data/faces/"+st.session_state['user_id']+"/"+faces[idx])
             encode = face_recognition.face_encodings(img)[0]
             #st.info("you will need to verify at least 3 live actions to continue verification")
             if st.checkbox('test any person aliveness actions',value=False):
-                for i in range(6):
-                    os.makedirs("Active_aliveness_verification/verified/"+st.session_state['user_id']+"/"+str(i),exist_ok=True)
-            else:
-                os.system("rm -r Active_aliveness_verification/verified/"+st.session_state['user_id']+"/*")
+                verify_any_person = True
 
             actions = ['mouthPucker', 'browInnerUp', 'eyeSquintRight', 'eyeSquintLeft', 'browOuterUpLeft', 'eyeBlinkRight', 
                     'eyeBlinkLeft', 'mouthRollLower', 'eyeLookDownRight', 'eyeLookDownLeft', 'browOuterUpRight', 'mouthShrugLower', 
@@ -209,9 +205,11 @@ if "selected_verifications" in st.session_state:
             user_id = st.session_state['user_id']
             webrtc_streamer(key="example", video_frame_callback=callback, media_stream_constraints={"video": True,"audio": False,},async_processing=True,
                             rtc_configuration={"iceServers": get_ice_servers()},)
-            if set(os.listdir("Active_aliveness_verification/Verified_Actions/"+user_id)).difference(set(actions)) == set():
+            verfied_actions = os.listdir("Data/Active_Aliveness_Verified_Actions/"+user_id)
+            verfied_actions = [ x.replace('.jpg',"") for x in verfied_actions]
+            if set(selected_actions).difference(set(verfied_actions)) == set():
                 not_matched = False
-                os.system("rm -r Active_aliveness_verification/Verified_Actions/"+user_id+"/*")
+                # os.system("rm -r Data/Active_Aliveness_Verified_Actions/"+user_id+"/*")
 
         else:
             st.warning("you should select 1 face only to verify aliveness")

@@ -8,13 +8,13 @@ st.set_page_config(
 )
 with st.sidebar:
     if st.button("Reset",key='reset'):
-        os.system("rm -r image.json")
-        os.system("rm -r verify/Input/*")
-        os.system("rm -r verify/selected/*")
-        os.system("rm -r detect_class_process/results.json")
-        os.system("rm -r Active_aliveness_verification/verified/*")
-        os.system("rm -r Active_aliveness_verification/Verified_Actions/*")
-        os.system("rm -r Active_aliveness_verification/input/*")
+        os.system("rm -r Data/Active_aliveness_selected_face/"+st.session_state['user_id']+"/*")       
+        os.system("rm -r Data/Active_Aliveness_Verified_Actions/"+st.session_state['user_id']+"/*")    
+        os.system("rm -r Data/Matched_faces/"+st.session_state['user_id']+"/*")
+        os.system("rm -r Data/detected_faces_in_verf_image/"+st.session_state['user_id']+"/*")         
+        os.system("rm -r Data/Document_Aliveness_selected_card/"+st.session_state['user_id']+"/*")     
+        os.system("rm -r Data/Document_Aliveness_Verified_Actions/"+st.session_state['user_id']+"/*")  
+        os.system("rm -r Data/selected_faces/"+st.session_state['user_id']+"/*")
 
 verf_pages = ['Face Verification','Active Aliveness Verification','Document Aliveness Verification','Audio Verification']
 # st.sidebar.success("Select a demo above.")

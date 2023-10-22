@@ -18,13 +18,8 @@ st.set_page_config(
 )
 with st.sidebar:
     if st.button("Reset",key='reset'):
-        os.system("rm -r image.json")
-        os.system("rm -r verify/Input/*")
-        os.system("rm -r verify/selected/*")
-        os.system("rm -r detect_class_process/results.json")
-        os.system("rm -r Active_aliveness_verification/verified/*")
-        os.system("rm -r Active_aliveness_verification/Verified_Actions/*")
-        os.system("rm -r Active_aliveness_verification/input/*")
+        os.system("rm -r Data/faces/"+st.session_state['user_id']+"/*")
+        os.system("rm -r Data/cards/"+st.session_state['user_id']+"/*")
 
 def resize(img):
     max_size = 1500.0
@@ -56,13 +51,11 @@ if "documents" in st.session_state:
             f.write(json.dumps(class_configs,indent=4))
         
         encrypt_file("detect_class_process/card_detect_class/Config1_enc/")
-        os.makedirs("detect_class_process/card_detect_class/"+st.session_state['user_id'],exist_ok=True)
-
+        os.makedirs("Data/Models/"+st.session_state['user_id'],exist_ok=True)
         
-        os.makedirs( "detect_class_process/card_detect_class/"+st.session_state['user_id'],exist_ok=True)
         model_dir = "/media/asr7/19a7589f-b05f-4923-9b94-5803bff11012/OCR/e-kyc-pipeline/detect_class_process/card_detect_class/layout_enc/"
-        os.system("ln -sf " + model_dir + "/* detect_class_process/card_detect_class/" + st.session_state['user_id']+"/")
-        os.system("mv detect_class_process/card_detect_class/Config1_enc/Config1.json detect_class_process/card_detect_class/"+
+        os.system("ln -sf " + model_dir + "/* Data/Models/" + st.session_state['user_id']+"/")
+        os.system("mv detect_class_process/card_detect_class/Config1_enc/Config1.json Data/Models/"+
                   st.session_state['user_id']+"/Config1.json")
         
         # ui
@@ -87,18 +80,18 @@ if "documents" in st.session_state:
                 base64_img = encoded_string.decode('ascii')
                 st.session_state['image'] = base64_img
             
-                with open("images/"+st.session_state['user_id']+".json",'w') as f:
+                with open("Data/images/"+st.session_state['user_id']+".json",'w') as f:
                     f.write(json.dumps({"image":base64_img}))
 
-                os.system("cd detect_class_process; export LD_LIBRARY_PATH=$(pwd); python e-kyc.py "+st.session_state['user_id']+
-                          " ../images/"+st.session_state['user_id']+".json")
+                os.system("cd detect_class_process; export LD_LIBRARY_PATH=$(pwd); python e-kyc.py ../Data/images/"+st.session_state['user_id']+".json")
                 #subprocess.call(["cd detect_class_process; export LD_LIBRARY_PATH=$(pwd); uwsgi uwsgi.ini"], shell=True)
                 #response = requests.post("http://192.168.6.43:8001/process_docs_in_image",data=detect_class_process_schema)
                 
-                with open('detect_class_process/'+st.session_state['user_id']+'_results.json') as f:
+                with open('Data/Processing_results/'+st.session_state['user_id']+'.json') as f:
                     cards = json.load(f)
                 
                 st.session_state['detect_class_process_results'] = cards
+                os.makedirs("Data/faces/"+st.session_state['user_id'],exist_ok=True)
 
                 for card in cards:
                     lbls = cards[card].keys()
@@ -108,14 +101,13 @@ if "documents" in st.session_state:
                     col1, col2 = st.columns(2)
                     col1.write('Label')
                     col2.write('Value')
-                    os.makedirs("verify/Input/"+st.session_state['user_id'],exist_ok=True)
                     for img_field in image_fields:
                         with st.container():
                             col1, col2 = st.columns(2)
                             col1.write(img_field)
                             col2.image(base64.b64decode(cards[card][img_field].encode('utf-8')))
                         if "ersonal" in img_field:
-                            with open("verify/Input/"+st.session_state['user_id']+"/face_{}.jpg".format(card.split("_")[-1]),"wb") as f:
+                            with open("Data/faces/"+st.session_state['user_id']+"/face_{}.jpg".format(card.split("_")[-1]),"wb") as f:
                                 f.write(base64.b64decode(cards[card][img_field].encode('utf-8')))
 
                     for lbl in set(lbls).difference(set(image_fields)):

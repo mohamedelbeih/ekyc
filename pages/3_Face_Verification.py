@@ -19,6 +19,13 @@ st.set_page_config(
 st.subheader("Face verification through camera")
 st.write("here verifying detected face in the previous given image with a live image from camera ( real person or another image )")
 st.write("____")
+
+with st.sidebar:
+    if st.button("Reset",key='reset'):
+        os.system("rm -r Data/Matched_faces/"+st.session_state['user_id']+"/*")
+        os.system("rm -r Data/detected_faces_in_verf_image/"+st.session_state['user_id']+"/*")         
+        os.system("rm -r Data/selected_faces/"+st.session_state['user_id']+"/*")
+
 def resize(img):
     max_size = 1500.0
     h,w,c = img.shape
@@ -28,16 +35,6 @@ def resize(img):
     n_w = int(w * ratio)
     n_img = cv2.resize(img, (n_w,n_h) , interpolation = cv2.INTER_AREA)
     return n_img
-
-with st.sidebar:
-    if st.button("Reset",key='reset'):
-        os.system("rm -r image.json")
-        os.system("rm -r verify/Input/*")
-        os.system("rm -r verify/selected/*")
-        os.system("rm -r detect_class_process/results.json")
-        os.system("rm -r Active_aliveness_verification/verified/*")
-        os.system("rm -r Active_aliveness_verification/Verified_Actions/*")
-        os.system("rm -r Active_aliveness_verification/input/*")
 
 page_name = 'Face Verification'
 try:
@@ -52,25 +49,26 @@ except:
 if "selected_verifications" in st.session_state:
     if page_name in st.session_state['selected_verifications']:
       st.write("Detected Faces in the previously given image :")
-      faces = os.listdir("verify/Input/"+st.session_state['user_id'])
-      os.makedirs("verify/selected/"+ st.session_state['user_id'] ,exist_ok=True)
+      faces = os.listdir("Data/faces/"+st.session_state['user_id'])
+      os.makedirs("Data/selected_faces/"+ st.session_state['user_id'] ,exist_ok=True)
       for face in faces:
-          img= Image.open("verify/Input/"+st.session_state['user_id']+"/"+face)
+          img= Image.open("Data/faces/"+st.session_state['user_id']+"/"+face)
           with st.container():
               col1, col2  = st.columns([0.5,0.5],gap="large")
               with col1:
                   st.image(img)
               with col2:
                   if st.checkbox("Personal_image_"+face.split("_")[-1],value=True):
-                      os.system("cp verify/Input/"+st.session_state['user_id']+"/"+face + " verify/selected/"+st.session_state['user_id']+"/"+face)
+                      os.system("cp Data/faces/"+st.session_state['user_id']+"/"+face + " Data/selected_faces/"+st.session_state['user_id']+"/"+face)
                   else:
-                      os.system("rm verify/selected/"+st.session_state['user_id']+"/"+face)
+                      os.system("rm Data/selected_faces/"+st.session_state['user_id']+"/"+face)
 
       uploaded_picture = st.file_uploader("upload Image", type=["png","jpg","jpeg", 'bmp', 'tiff'], key='face_imge')
       captured_picture = st.camera_input("Or Take a picture")
       procesing_done , matched = False , 0
       if captured_picture or uploaded_picture:
           picture = captured_picture if captured_picture else uploaded_picture
+          st.session_state['face_verf_pic'] = picture
           st.write("Captured image")
           st.image(picture)
           img_bytes = picture.getvalue()
@@ -79,8 +77,8 @@ if "selected_verifications" in st.session_state:
           rgb_img = cv2.cvtColor(np_image, cv2.COLOR_BGR2RGB)
 
           with st.spinner('Please wait .. Detecting faces in image'):
-              selected_faces = os.listdir("verify/selected/"+st.session_state['user_id'])
-              selected_faces = [ "verify/selected/"+st.session_state['user_id']+"/" + x for x in selected_faces]
+              selected_faces = os.listdir("Data/selected_faces/"+st.session_state['user_id'])
+              selected_faces = [ "Data/selected_faces/"+st.session_state['user_id']+"/" + x for x in selected_faces]
               selected_faces_encodes = []
               for f in selected_faces:
                   img = face_recognition.load_image_file(f)
@@ -92,9 +90,13 @@ if "selected_verifications" in st.session_state:
               detected_faces = face_recognition.face_locations(rgb_img)
               if len(detected_faces) > 0:
                   st.subheader('Detected faces :')
+              counter = 0
+              os.makedirs("Data/detected_faces_in_verf_image/"+st.session_state['user_id'],exist_ok=True)
               for f in detected_faces:
                   face = np_image[f[0]:f[2],f[3]:f[1]]
+                  cv2.imwrite('Data/detected_faces_in_verf_image/'+st.session_state['user_id']+"/"+str(counter)+".jpg",cv2.cvtColor(face,cv2.COLOR_BGR2RGB))
                   st.image(face)
+                  counter += 1
 
               encodes = face_recognition.face_encodings(rgb_img)
               st.subheader("Matched faces : ")
@@ -113,6 +115,10 @@ if "selected_verifications" in st.session_state:
                               st.write("is matching with")
                           with col3:
                               st.image(selected_faces[i])
+                      os.makedirs('Data/Matched_faces/'+st.session_state['user_id']+"/"+str(i),exist_ok=True)
+                      os.system('cp '+ selected_faces[i] +' Data/Matched_faces/'+st.session_state['user_id']+"/"+str(i)+"/face.jpg")
+                      cv2.imwrite('Data/Matched_faces/'+st.session_state['user_id']+"/"+str(i)+"/with_face.jpg",
+                                  cv2.cvtColor(croped_face,cv2.COLOR_BGR2RGB))
                   except:
                       pass
               procesing_done = True
